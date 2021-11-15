@@ -326,6 +326,12 @@ fn main() {
     cmd.arg(format!("--host={}", gnu_target(&target)));
     cmd.arg(format!("--build={}", gnu_target(&host)));
     cmd.arg(format!("--prefix={}", out_dir.display()));
+    cmd.arg("--enable-prof-libunwind");
+
+    let libunwind = "/usr/lib/x86_64-linux-gnu/libunwind.a";
+    let liblzma = "/usr/lib/x86_64-linux-gnu/liblzma.a";
+
+    cmd.arg(format!("--with-static-libunwind={}", libunwind));
 
     run(&mut cmd);
 
@@ -377,13 +383,18 @@ fn main() {
     } else {
         println!("cargo:rustc-link-lib=static=jemalloc_pic");
     }
-    println!("cargo:rustc-link-search=native={}/lib", build_dir.display());
+    let lib_dir = build_dir.join("lib");
+    fs::copy(libunwind, lib_dir.join("libunwind.a"));
+    fs::copy(liblzma, lib_dir.join("liblzma.a"));
+    println!("cargo:rustc-link-search=native={}", lib_dir.display());
     if target.contains("android") {
         println!("cargo:rustc-link-lib=gcc");
     } else if !target.contains("windows") {
         println!("cargo:rustc-link-lib=pthread");
     }
     println!("cargo:rerun-if-changed=jemalloc");
+    println!("cargo:rustc-link-lib=static=unwind");
+    println!("cargo:rustc-link-lib=static=lzma");
 }
 
 fn run(cmd: &mut Command) {
